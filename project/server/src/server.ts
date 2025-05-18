@@ -19,7 +19,11 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+
+// Increase JSON payload size limit (change to 50MB)
+app.use(express.json({ limit: '50mb' }));
+// Also increase URL-encoded payload size limit if you're using this middleware
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.use('/api/products', productRouter);
