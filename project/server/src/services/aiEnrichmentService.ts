@@ -50,7 +50,7 @@ export async function enrichProductWithAI(
       const content = await createContentWithImages(product, attributesToEnrich);
       
       completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Use GPT-4o for image analysis
+        model: "gpt-4o-mini", 
         messages: [
           { 
             role: "system", 
