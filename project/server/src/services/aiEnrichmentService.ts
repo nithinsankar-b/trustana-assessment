@@ -39,21 +39,47 @@ export async function enrichProductWithAI(
       return currentAttributes; // Nothing to enrich
     }
     
-    // Create a prompt for the AI
-    const prompt = createEnrichmentPrompt(product, attributesToEnrich);
+    // Determine if we have valid images
+    const hasValidImages = product.images && product.images.length > 0 && 
+                           product.images.some(img => isValidImageUrl(img));
     
-    // Call the AI service
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4',
-      messages: [
-        { 
-          role: "system", 
-          content: "You are a product data specialist who extracts and infers product attributes from basic information. Respond with a valid JSON object containing only the requested attributes. Be accurate and realistic in your assessments."
-        },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    // Call the AI service with or without images
+    let completion;
+    if (hasValidImages) {
+      // Create message content with images
+      const content = await createContentWithImages(product, attributesToEnrich);
+      
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini", // Use GPT-4o for image analysis
+        messages: [
+          { 
+            role: "system", 
+            content: "You are a product data specialist who extracts and infers product attributes from images and basic information. Analyze any provided images carefully to determine product details like color, size, materials, etc. Respond with a valid JSON object containing only the requested attributes."
+          },
+          { 
+            role: "user", 
+            content: content
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+    } else {
+      // Text-only approach (original implementation)
+      const prompt = createEnrichmentPrompt(product, attributesToEnrich);
+      
+      completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4',
+        messages: [
+          { 
+            role: "system", 
+            content: "You are a product data specialist who extracts and infers product attributes from basic information. Respond with a valid JSON object containing only the requested attributes. Be accurate and realistic in your assessments."
+          },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 300
+      });
+    }
     
     // Parse AI response
     const responseText = completion.choices[0].message.content;
@@ -81,14 +107,97 @@ export async function enrichProductWithAI(
     if (error instanceof ApiError) {
       throw error;
     }
-    else{
-    throw new ApiError(500, `AI enrichment failed: Unknown error`);
+    else {
+      throw new ApiError(500, `AI enrichment failed: ${(error as Error).message || 'Unknown error'}`);
     }
   }
 }
 
 /**
- * Create a prompt for the AI service
+ * Create message content with images for GPT-4o
+ */
+async function createContentWithImages(product: Product, attributesToEnrich: Attribute[]) {
+  // Format text part of the message
+  const textPrompt = `
+I need to enrich the following product with additional attributes:
+
+Product Name: ${product.name}
+Brand: ${product.brand}
+Barcode: ${product.barcode || 'Unknown'}
+
+Please analyze the provided product images and extract or infer the following attributes:
+${attributesToEnrich.map(attr => {
+  let description = `- ${attr.name} (Type: ${attr.type})`;
+  if (attr.unit) {
+    description += ` with unit: ${attr.unit}`;
+  }
+  if (attr.options && attr.options.length > 0) {
+    description += ` with options: [${attr.options.join(', ')}]`;
+  }
+  return description;
+}).join('\n')}
+
+Respond with a JSON object containing only these attributes. For each attribute, follow these rules:
+- For SHORT_TEXT and LONG_TEXT: Provide a string value
+- For RICH_TEXT: Provide HTML content as a string
+- For NUMBER: Provide a numeric value
+- For SINGLE_SELECT: Select one option from the provided list
+- For MULTIPLE_SELECT: Select appropriate options from the provided list as an array
+- For MEASURE: Provide an object with "value" (number) and "unit" properties
+
+Example response format:
+{
+  "Item Weight": { "value": 150, "unit": "g" },
+  "Ingredients": ["Wheat Flour", "Sugar", "Salt"],
+  "Product Description": "<p>This is a premium product...</p>",
+  "Storage Requirements": "Dry Storage",
+  "Items per Package": 5
+}
+
+Carefully analyze the images to determine visual attributes like color, shape, materials, etc.
+`;
+
+  // Create content array with text and images
+  const contentArray: any[] = [];
+
+  // Add text as ChatCompletionContentPartText
+  contentArray.push({
+    type: "text",
+    text: textPrompt
+  });
+
+  // Add valid images as ChatCompletionContentPartImage
+  if (product.images && product.images.length > 0) {
+    for (const imageUrl of product.images) {
+      if (isValidImageUrl(imageUrl)) {
+        contentArray.push({
+          type: "image_url",
+          image_url: {
+            url: imageUrl
+          }
+        });
+      }
+    }
+  }
+
+  return contentArray;
+}
+
+
+/**
+ * Helper function to check if a URL is a valid image URL
+ */
+function isValidImageUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;  // For simplicity - in production you might want to check file extensions, etc.
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Original text-only prompt function (kept for fallback)
  */
 function createEnrichmentPrompt(product: Product, attributesToEnrich: Attribute[]): string {
   // Format product data
@@ -96,7 +205,6 @@ function createEnrichmentPrompt(product: Product, attributesToEnrich: Attribute[
 Product Name: ${product.name}
 Brand: ${product.brand}
 Barcode: ${product.barcode || 'Unknown'}
-Product Images: ${product.images.join(', ')}
 `;
   
   // Format attributes to be enriched
