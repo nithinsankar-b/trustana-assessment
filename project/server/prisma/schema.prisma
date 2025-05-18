@@ -1,0 +1,62 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  brand       String
+  barcode     String?   @unique
+  images      String[]  // PostgreSQL supports native arrays
+  attributes  Json?     // flexible JSON field
+  ai_enriched Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+}
+
+model Attribute {
+  id             Int           @id @default(autoincrement())
+  name           String        @unique
+  type           AttributeType
+  unit           String?       // For MEASURE type
+  options        String[]      // PostgreSQL array for options
+  isRequired     Boolean       @default(true)   // <- Changed default to true
+  systemGenerated Boolean      @default(false)  // <- New field
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+enum AttributeType {
+  SHORT_TEXT
+  LONG_TEXT
+  RICH_TEXT
+  NUMBER
+  SINGLE_SELECT
+  MULTIPLE_SELECT
+  MEASURE
+}
+
+model EnrichmentJob {
+  id          Int             @id @default(autoincrement())
+  productIds  Int[]           // array of Product ids
+  status      EnrichmentStatus
+  progress    Float           @default(0) // 0-100
+  result      Json?           // JSON result
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+enum EnrichmentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
