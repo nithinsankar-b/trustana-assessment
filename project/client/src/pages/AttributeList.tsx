@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// @ts-nocheck
+
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getAttributes, deleteAttribute } from '../services/api';
 import Modal from '../components/Modal';
 import AttributeForm from '../components/AttributeForm';

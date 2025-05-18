@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
 
+interface FormData {
+    name: string;
+    type: string;
+    unit: string;
+    options: string[];
+    isRequired: boolean;
+  }
+
 const AttributeForm = ({
-  attribute,
-  onSubmit,
-  onCancel,
-  isLoading = false
-}) => {
-  const [formData, setFormData] = useState({
+    attribute,
+    onSubmit,
+    onCancel,
+    isLoading = false
+  }: {
+    attribute: any;
+    onSubmit: (...args: any[]) => void;
+    onCancel: () => void;
+    isLoading?: boolean;
+  }) => {
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     type: 'SHORT_TEXT',
     unit: '',
@@ -23,10 +36,13 @@ const AttributeForm = ({
     }
   }, [attribute]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    if (type === 'checkbox') {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+  
+    if (type === 'checkbox' && 'checked' in e.target) {
+      // Now TS knows e.target.checked exists
+      const checked = (e.target as HTMLInputElement).checked;
+  
       setFormData((prev) => ({
         ...prev,
         [name]: checked
@@ -38,25 +54,26 @@ const AttributeForm = ({
       }));
     }
   };
+  
 
   const handleAddOption = () => {
     if (optionInput.trim()) {
       setFormData((prev) => ({
         ...prev,
-        options: [...(prev.options || []), optionInput.trim()]
+        options: [...prev.options, optionInput.trim()], // no need for 'prev.options || []' since options always typed string[]
       }));
       setOptionInput('');
     }
   };
 
-  const handleRemoveOption = (index) => {
+  const handleRemoveOption = (index: number) => {
     setFormData((prev) => ({
       ...prev,
       options: prev.options?.filter((_, i) => i !== index) || []
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit(formData);
   };

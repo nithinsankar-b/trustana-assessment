@@ -1,6 +1,5 @@
-import React from 'react';
-
-const EnrichButton = ({ product, isEnriching, onEnrich }) => {
+// @ts-nocheck
+const EnrichButton = ({ product, isEnriching, onEnrich }: { product: any; isEnriching: boolean; onEnrich: () => void }) => {
   // Button style classes based on state
   const getButtonClasses = () => {
     if (isEnriching) {

@@ -98,10 +98,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
     
     // Prepare the product data with the image information
     const productToSubmit: Partial<Product> = {
-        name: formData.name?.trim() || null,
-        brand: formData.brand?.trim() || null,
+        name: formData.name?.trim() || undefined,
+        brand: formData.brand?.trim() || undefined,
         barcode: formData.barcode?.trim() || null,
-        attributes: Object.keys(formData.attributes || {}).length > 0 ? formData.attributes : null
+        attributes: Object.keys(formData.attributes || {}).length > 0 ? formData.attributes : undefined
       };
     
     // Convert file objects to base64 if they're new uploads

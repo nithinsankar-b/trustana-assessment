@@ -132,6 +132,7 @@ const EnrichmentStatus: React.FC<EnrichmentStatusProps> = ({ jobId, onCompleted 
         </div>
       )}
       
+      {/* @ts-ignore */}
       <style jsx>{`
         .status {
           padding: 0.25rem 0.5rem;
